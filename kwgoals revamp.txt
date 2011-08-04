@@ -1,0 +1,97 @@
+kwgoals
+=======
+
+Track
+------
+* Choose keyword cluster: upload Google CSV (multiple times ok)  
+* Track google keyword hits via jQuery tracker for google hits calls small stub to log hit
+
+Analysis
+---------
+* Value of keyword for each page based on estimated increase of hits from moving up one position
+* Simple api for fetching top unique keywords for site and page
+* Node keyword available in views from kwgoals_views.inc
+
+Promote
+-------
+* Automatically add keywords to blink system, top keywords added to node on load 
+* page search cloud
+* site search cloud
+
+Strategy report
+----------------
+* which keywords are un-represented
+* which keywords are not showing
+* which keywords would bring most traffic if boosted
+* estimated growth potential
+* 404 report??
+  
+Site accomplishment report
+---------
+* search growth rate over time
+* % of keyword cluster represented in the searches
+* top ten sites in this cluster for keyword coverage
+* top sites for traffic coverage
+  
+Testing
+-------
+* Generate record of fake hits for analysis
+  
+  
+DB Structure
+------------ 
+ hits - hid, nid, ip, date, kwid, serp, is_test // add only if no matching hit on this kw/ip in last hour  
+ kw - kwid, phrase, nid (op), potential (op), max (op), serp (op), word_count ?, source ?   
+ 
+jQuery Item
+------------
+ Check if Google hit
+ Extract phrase, position
+ Clean phrase, remove stop words, garbage
+ Submit if wordcount between 1 and 5
+ 
+ 
+
+
+
+ 
+function _seo_dashboard_scrub_search_phrase($search_phrase) {
+  // decode, strip symbols and punctuation, remove stopwords and numbers, re-assemble phrase 
+  $common = _seo_dashboard_stopwords(); 
+  $punctuation = '~!@#$%^&*()_+=-`\'";:<>,.[]{}\\| ';
+  $numerals = '0123456789';
+  $search_phrase = strtolower(trim($search_phrase, $punctuation));
+  $search_phrase = str_replace('+', ' ', $search_phrase);
+  $list = explode(' ', $search_phrase);
+  if (is_Array($list)) { 
+   foreach ($list as $kw) {
+    $kw = trim($kw, $punctuation);
+    if ($kw && (strlen($kw)<15) && (strlen($kw)>2) && !is_numeric($kw) && !in_array($kw, $common)) {
+       $new[] = $kw; 
+    }
+   } 
+   if (is_array($new)) $result = implode(' ', $new);  
+  }
+  else $result = trim($search_phrase);  
+  return $result;
+ }
+function _seo_dashboard_word_count($search_phrase) {
+  // use scrubbed phrase so we don't get crap in here
+  $list = explode(' ', trim($search_phrase));
+  $result = count($list);
+  return $result;
+}            
+ 
+Hooks
+-----
+* hook_init - to insert monitor.js
+* hook_block - to provide site and page cloud blocks
+* hook_cron - to compile information and manage blink keywords - and to send weekly summary report email
+
+
+
+
+
+ 
+ 
+  

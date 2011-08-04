@@ -1,0 +1,89 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Keyword Targets module install file
+ *
+ * Keyword goals is a simple system for recording keyword goals and comparing them to actual keyword traffic
+ * Traffic is tracked with jQuery call to a lightweight recorder (no drupal bootstrap) which allows
+ *  the tracker to work with caching (even proxy caching) in which Drupal is not invoked 
+ *
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function kwgoals_install() {  // Create my tables.
+  //drupal_install_schema('kwgoals');
+  drupal_set_message("kwgoals_install");
+  $result = drupal_install_schema('kwgoals'); 
+  foreach ($result as $key => $try) { 
+    if ($try['success']) drupal_set_message(st("KwGoals table ". ($key+1) ." of ". count($result) ." successfully installed")); 
+  } 
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function kwgoals_uninstall() { // Drop my tables.
+  drupal_uninstall_schema('kwgoals');
+}
+ 
+
+/**
+ * Define our schema
+ */
+function kwgoals_schema() { 
+ // kw - kwid, phrase, nid (op), potential (op), max (op), serp (op), word_count ?, source ?  
+ // hits - hid, nid, ip, date, kwid, serp, is_test // add only if no matching hit on this kw/ip in last hour   
+    // add: epc, updated, 
+  
+   $schema['kwgoals_kw'] = array(
+    'description' => t('Known Keywords.'), 
+    'fields' => array(     
+      'kwid'         => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => t('Autoinc link id.')),
+      'phrase'       => array('type' => 'varchar', 'length' => 100, 'not null' => TRUE, 'default' => '', 'description' => t('Keyword Phrase, unique in this table.')), 
+      'nid'          => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Best page for this keyword')),
+      'serp'         => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Current SERP')),
+      'all_traffic'  => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('All Google traffic for this exact phrase')),  
+      'competition'  => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Googles estimated competition for this term')),
+      'potential'    => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Calculated growth possible for this term')),
+      'weight'       => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Calculated weight to give this link')),  
+      'updated'      => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Last date we updated the search stats')), 
+    ), 
+    'indexes' => array( 
+      'target_nid'          => array('nid'),
+      'target_potential'    => array('potential'),
+    ),
+    'unique keys' => array(
+      'target_link' => array('phrase', 'nid'),
+    ),
+    'primary key' => array('kwid'),
+   );
+
+   $schema['kwgoals_hits'] = array(
+    'description' => t('Lightweight table for tracking google.com hits over time'),
+    'fields' => array(
+      'hid'          => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE, 'description' => t('Autoinc hit id.')), 
+      'nid'          => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Hit node')),
+      'kwid'         => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Keyword')),
+      'ip'           => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Browser IP')),
+      'date'         => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Hit datetime')),
+      'serp'         => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'description' => t('Search result postion')),       
+     ),
+    'indexes' => array(
+       'hit_nid'    => array('nid'),
+       'hit_date'   => array('date'),
+       'hit_ip'     => array('ip'),
+     ), 
+    'primary key' => array('hid'),
+    );
+
+  return $schema;
+}
+
+
+
+
+

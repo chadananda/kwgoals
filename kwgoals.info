@@ -1,0 +1,4 @@
+name = Keyword Goals
+description = Organize site promotion around keyword goals
+package = * KOC
+core = 6.x

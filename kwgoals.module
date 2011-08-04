@@ -1,0 +1,132 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Keyword Goals module file
+ *
+ * Keyword goals is a simple system for recording keyword goals and comparing them to actual keyword traffic
+ * Traffic is tracked with jQuery call to a lightweight recorder (no drupal bootstrap) which allows
+ *  the tracker to work with caching (even proxy caching) in which Drupal is notles
+ */
+ 
+
+
+/**
+ * Implementation of hook_help().
+ */
+function kwgoals_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#keyword_targets':
+      $output = '<p>'. t('The <em>Keyword Goals</em> module provides storage and tracking of keyword goals.') .'</p>';
+      return $output;
+  }
+}
+ 
+/**
+ * Implementation of hook_menu()
+ */
+function kwgoals_menu() {
+  $items = array(); 
+  $items['admin/settings/koc/keyword-goals'] = array(
+    'title' => 'Keyword Goals',
+    'description' => 'Keyword Goals',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('kwgoals_add_keywords_form', NULL),
+    'file path' => drupal_get_path('module', 'kwgoals'),
+    'file'  => 'kwgoals.admin.inc.php',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'type'  => MENU_LOCAL_TASK,
+    'weight' => 2,
+  ); 
+  $items['admin/settings/koc/keyword-suggestions'] = array(
+    'title' => 'Keyword Suggestions',
+    'description' => 'Keyword Suggestions Report',
+    'page callback' => 'kwgoals_suggestions_report',
+    'file path' => drupal_get_path('module', 'kwgoals'),
+    'file'  => 'kwgoals.admin.inc.php',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'type'  => MENU_LOCAL_TASK,
+    'weight' => 3,
+  ); 
+  $items['admin/settings/koc/keyword-summary'] = array(
+    'title' => 'Keyword Summary',
+    'description' => 'Keyword Summary Report',
+    'page callback' => 'kwgoals_summary_report',
+    'file path' => drupal_get_path('module', 'kwgoals'),
+    'file'  => 'kwgoals.admin.inc.php',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'type'  => MENU_LOCAL_TASK,
+    'weight' => 4,
+  );  
+  $items['admin/reports/keyword-suggestions'] = array( 
+    'title' => 'Keyword Suggestions',
+    'description' => 'Keyword Suggestions Report',
+    'page callback' => 'kwgoals_suggestions_report',
+    'file path' => drupal_get_path('module', 'kwgoals'),
+    'file'  => 'kwgoals.admin.inc.php',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'type'  => MENU_LOCAL_TASK,
+    'weight' => 3,
+  ); 
+  $items['admin/reports/keyword-summary'] = array(
+    'title' => 'Keyword Traffic Summary',
+    'description' => 'Keyword Summary Report',
+    'page callback' => 'kwgoals_summary_report',
+    'file path' => drupal_get_path('module', 'kwgoals'),
+    'file'  => 'kwgoals.admin.inc.php',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'type'  => MENU_LOCAL_TASK,
+    'weight' => 4,
+  ); 
+  return $items;
+}
+
+
+/**
+ * Implementation of hook_cron(). 
+ */
+function kwgoals_cron() { 
+  // update keywords in blink daily
+  $last_updated = variable_get('kwgoals_last_blink_update', 0);
+  if ($last_updated < strtotime('-1 hour')) {
+    include_once('kwgoals_admin.inc.php');
+    kwgoals_update_blink_goals_cronjob();  
+    variable_set('kwgoals_last_blink_update', time());
+  }  
+} 
+ 
+
+/**
+ * Implementation of hook_footer(). 
+ */
+function kwgoals_init() { 
+  // message for admins - for testing
+  if (user_access('administer site configuration')) {
+    $prev = variable_get('kwgoals_searchhits', 0);
+    $total = db_result(db_query("SELECT count(*) FROM {kwgoals_hits}"));
+    if ($total > $prev) {
+      variable_set('kwgoals_searchhits', $total);
+      drupal_set_message($total-$prev ." new search engine hits registered.");  
+    }
+  } 
+  // insert code into node pages
+  if (arg(0) == 'node' && ($nid = arg(1))) { // if this is a node (what to do about home page?) 
+    // insert path to kwgoals_tracker.php
+   $tracker_url = "/". drupal_get_path('module', 'kwgoals') .'/kwgoals.php'; 
+   drupal_add_js("kwgoals_tracker = '{$tracker_url}'; kwgoals_nid='{$nid}';", 'inline', 'header');
+    // include tracker file which does all the work 
+   drupal_add_js(drupal_get_path('module', 'kwgoals') .'/kwgoals.js', 'module', 'footer'); 
+  }
+}  
+
+ 
+ 
+
+
+ 

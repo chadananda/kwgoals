@@ -1,0 +1,56 @@
+Steps to get kwgoals useful
+===========================
+
+KW Goals 
+========
+
+Search:
+ * add search kw to kw_totals table (ie, implement weighting algorithm)
+ * monitor log file folder
+ * report results so that we can determine if the algorithm works
+ 
+ * add kw_totals to kw_goals 
+ * summary keyword overview with optional weekly email!!
+
+Crosslink:
+ * filter for crosslinking (like alinks, respects published state)
+ * search cloud block
+ * similar searches node list (for views?) 
+ 
+Lnker.com
+=========
+ * implement XMLRPC request to lnker.com
+ * implement module at lnker.com to automate kw generation
+ * implement redirect stub on lnker.com
+ * all keyword links re-written as lnker subdomain links. 
+
+Free Content
+============
+ * isnare importer - import 100 or so articles, add keywords
+ * schedule 2 publishes per day
+ * link to each from home page.
+ * audio is auto-read and podcasted with audio-push
+
+Paid content
+============
+ * create software review content type with 
+   . audio field (allow upload of mp3 file)
+   . video field (allow upload of video) 
+   . content keyword rules (not too many repeated keywords etc)
+   . plagiarism check in workflow
+  rules: need 400 words content, 4-5 screen shots, one demo video, one audio reading (of content text at set bitrate) audio is podcasted.
+  
+  
+Rollout:
+========
+ * generate list of top 100 backup software, pay $20-30 for full review, 
+    . experiement with publishing articles to article repositories, complete with sshots and lnker keywords links
+    . push videos to youtube complete with linkbacks
+ * create tutorial data time for next round of content
+    . gather all keywords around "how to backup x" and start developing content
+    
+    
+
+ 
+
+
