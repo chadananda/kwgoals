@@ -1,4 +1,5 @@
 <?php
+
 // $Id$
 
 /**
@@ -9,124 +10,248 @@
  * Traffic is tracked with jQuery call to a lightweight recorder (no drupal bootstrap) which allows
  *  the tracker to work with caching (even proxy caching) in which Drupal is notles
  */
- 
+
 
 
 /**
- * Implementation of hook_help().
+ * Implements hook_help().
  */
 function kwgoals_help($path, $arg) {
   switch ($path) {
     case 'admin/help#keyword_targets':
-      $output = '<p>'. t('The <em>Keyword Goals</em> module provides storage and tracking of keyword goals.') .'</p>';
+      $output = '<p>' . t('The <em>Keyword Goals</em> module provides storage and tracking of keyword goals.') . '</p>';
       return $output;
   }
 }
- 
+
 /**
- * Implementation of hook_menu()
+ * Implements hook_menu().
  */
 function kwgoals_menu() {
-  $items = array(); 
-  $items['admin/settings/koc/keyword-goals'] = array(
+  $items = array();
+  
+  $items['admin/config/koc'] = array(
     'title' => 'Keyword Goals',
     'description' => 'Keyword Goals',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('kwgoals_add_keywords_form', NULL),
     'file path' => drupal_get_path('module', 'kwgoals'),
-    'file'  => 'kwgoals.admin.inc.php',
+    'file' => 'kwgoals.admin.inc',
     'access callback' => 'user_access',
     'access arguments' => array('administer site configuration'),
-    'type'  => MENU_LOCAL_TASK,
+  #  'type' => MENU_LOCAL_TASK,
     'weight' => 2,
-  ); 
-  $items['admin/settings/koc/keyword-suggestions'] = array(
+  );
+  
+  $items['admin/config/koc/keyword-goals'] = array(
+    'title' => 'Keyword Goals',
+    'description' => 'Keyword Goals',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('kwgoals_add_keywords_form', NULL),
+    'file path' => drupal_get_path('module', 'kwgoals'),
+    'file' => 'kwgoals.admin.inc',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 2,
+  );
+  $items['admin/config/koc/keyword-suggestions'] = array(
     'title' => 'Keyword Suggestions',
     'description' => 'Keyword Suggestions Report',
     'page callback' => 'kwgoals_suggestions_report',
     'file path' => drupal_get_path('module', 'kwgoals'),
-    'file'  => 'kwgoals.admin.inc.php',
+    'file' => 'kwgoals.admin.inc',
     'access callback' => 'user_access',
     'access arguments' => array('administer site configuration'),
-    'type'  => MENU_LOCAL_TASK,
+    'type' => MENU_LOCAL_TASK,
     'weight' => 3,
-  ); 
-  $items['admin/settings/koc/keyword-summary'] = array(
+  );
+  $items['admin/config/koc/keyword-summary'] = array(
     'title' => 'Keyword Summary',
     'description' => 'Keyword Summary Report',
     'page callback' => 'kwgoals_summary_report',
     'file path' => drupal_get_path('module', 'kwgoals'),
-    'file'  => 'kwgoals.admin.inc.php',
+    'file' => 'kwgoals.admin.inc',
     'access callback' => 'user_access',
     'access arguments' => array('administer site configuration'),
-    'type'  => MENU_LOCAL_TASK,
+   'type' => MENU_LOCAL_TASK,
     'weight' => 4,
-  );  
-  $items['admin/reports/keyword-suggestions'] = array( 
+  );
+  
+  $items['admin/reports/keyword-goals'] = array(
+    'title' => 'Keyword Goals',
+    'description' => 'Keyword Suggestions Report',
+    'page callback' => 'kwgoals_suggestions_report',
+    'file path' => drupal_get_path('module', 'kwgoals'),
+    'file' => 'kwgoals.admin.inc',
+    'access callback' => 'user_access',
+    'access arguments' => array('administer site configuration'),
+ #   'type' => MENU_LOCAL_TASK,
+    'weight' => 3,
+  );
+  $items['admin/reports/keyword-goals/keyword-suggestions'] = array(
     'title' => 'Keyword Suggestions',
     'description' => 'Keyword Suggestions Report',
     'page callback' => 'kwgoals_suggestions_report',
     'file path' => drupal_get_path('module', 'kwgoals'),
-    'file'  => 'kwgoals.admin.inc.php',
+    'file' => 'kwgoals.admin.inc',
     'access callback' => 'user_access',
     'access arguments' => array('administer site configuration'),
-    'type'  => MENU_LOCAL_TASK,
+    'type' => MENU_LOCAL_TASK,
     'weight' => 3,
-  ); 
-  $items['admin/reports/keyword-summary'] = array(
+  );
+  $items['admin/reports/keyword-goals/keyword-summary'] = array(
     'title' => 'Keyword Traffic Summary',
     'description' => 'Keyword Summary Report',
     'page callback' => 'kwgoals_summary_report',
     'file path' => drupal_get_path('module', 'kwgoals'),
-    'file'  => 'kwgoals.admin.inc.php',
+    'file' => 'kwgoals.admin.inc',
     'access callback' => 'user_access',
     'access arguments' => array('administer site configuration'),
-    'type'  => MENU_LOCAL_TASK,
+    'type' => MENU_LOCAL_TASK,
     'weight' => 4,
-  ); 
+  );
   return $items;
 }
 
 
 /**
- * Implementation of hook_cron(). 
+ * Implements hook_cron(). ().
  */
-function kwgoals_cron() { 
+function kwgoals_cron() {
   // update keywords in blink daily
   $last_updated = variable_get('kwgoals_last_blink_update', 0);
   if ($last_updated < strtotime('-1 hour')) {
-    include_once('kwgoals_admin.inc.php');
-    kwgoals_update_blink_goals_cronjob();  
-    variable_set('kwgoals_last_blink_update', time());
-  }  
-} 
- 
+    include_once('kwgoals.admin.inc');
+    kwgoals_update_blink_goals_cronjob();
+    variable_set('kwgoals_last_blink_update', strtotime('now'));
+  }
+}
+
 
 /**
- * Implementation of hook_footer(). 
+ * Implements hook_footer(). ().
  */
-function kwgoals_init() { 
+function kwgoals_init() {
   // message for admins - for testing
   if (user_access('administer site configuration')) {
     $prev = variable_get('kwgoals_searchhits', 0);
-    $total = db_result(db_query("SELECT count(*) FROM {kwgoals_hits}"));
+    $total = db_query("SELECT count(*) FROM {kwgoals_hits}")->fetchField();
     if ($total > $prev) {
       variable_set('kwgoals_searchhits', $total);
-      drupal_set_message($total-$prev ." new search engine hits registered.");  
+      drupal_set_message($total -$prev . " new search engine hits registered.");
     }
-  } 
-  // insert code into node pages
-  if (arg(0) == 'node' && ($nid = arg(1))) { // if this is a node (what to do about home page?) 
-    // insert path to kwgoals_tracker.php
-   $tracker_url = "/". drupal_get_path('module', 'kwgoals') .'/kwgoals.php'; 
-   drupal_add_js("kwgoals_tracker = '{$tracker_url}'; kwgoals_nid='{$nid}';", 'inline', 'header');
-    // include tracker file which does all the work 
-   drupal_add_js(drupal_get_path('module', 'kwgoals') .'/kwgoals.js', 'module', 'footer'); 
   }
-}  
+  // insert code into node pages
+  if (arg(0) == 'node' && ($nid = arg(1))) { // if this is a node (what to do about home page?)
+    // insert path to kwgoals_tracker.php
+    $tracker_url = "/" . drupal_get_path('module', 'kwgoals') . '/kwgoals.php';
+    drupal_add_js("kwgoals_tracker = '{$tracker_url}'; kwgoals_nid='{$nid}';", array('type' => 'inline', 'scope' => JS_DEFAULT));
+    // include tracker file which does all the work
+    drupal_add_js('kwgoals.js', array('type' => 'file', 'scope' => JS_DEFAULT));
+  }
+}
 
- 
- 
 
 
- 
+
+
+
+
+// ==========================================================
+//   shared algorithms to calculate weights
+// ==========================================================
+
+
+// just give a higher weight the lower the serp - for when we have no google data
+function _kwgoals_estimate_weight_from_traffic($serp, $current_traffic) {
+  return $current_traffic * $serp * (round($serp / 10));
+}
+
+function _kwgoals_estimate_link_weight($potential, $competition, $weighted = KWGOALS_COMPETITION_WEIGHT) {
+  $weighted_portion = $potential * $weighted / 100;
+  $unweighted_portion = $potential - $weighted_portion;
+  $weighted_portion = $competition ? $weighted_portion - ($weighted_portion / (100 / $competition)) : 0;
+  $result = $unweighted_portion + $weighted_portion; // $weight/1 - $weight/100
+  return $result;
+}
+
+// estimated traffic increase from one step up the serp ladder
+function _kwgoals_estimate_potential_growth($serp, $all_traffic) {
+  if (!$all_traffic) {
+    return 0;
+  }
+  $current_traffic_est = _kwgoals_estimate_serp_traffic($serp, $all_traffic);
+  if ($serp == 1) {
+    return round($current_traffic_est / (100 / KWGOALS_DAMPEN_TOP));
+  } // dampen top keyword
+  $max_possible_traffic = _kwgoals_estimate_serp_traffic(1, $all_traffic);
+  return $max_possible_traffic - $current_traffic_est;
+}
+
+// estimate traffic for a serp
+function _kwgoals_estimate_serp_traffic($serp, $all_traffic) {
+  if (!$all_traffic || !$serp) {
+    return 0;
+  }
+  // formulae should basically match the serp click distributions
+  $dist = array(
+    42.3,
+    11.92,
+    8.44,
+    6.03,
+    4.86,
+    3.99,
+    3.37,
+    2.98,
+    2.83,
+    2.97,
+    0.66,
+    0.66,
+    0.52,
+    0.48,
+    0.47,
+    0.39,
+    0.36,
+    0.34,
+    0.32,
+    0.30,
+    0.29,
+    0.27,
+    0.24,
+    0.22,
+    0.20,
+    0.18,
+    0.16,
+    0.14,
+    0.12,
+    0.12,
+    0.12,
+    0.12,
+    0.12,
+    0.11,
+    0.11,
+    0.10,
+    0.10,
+    0.09,
+    0.09,
+    0.08,
+    0.08,
+    0.07,
+  );
+  if ($serp < count($dist)) {
+    return round($dist[$serp -1] * $all_traffic / 100);
+  }
+  $used = array_sum($dist);
+  for ($i = 41; $i < 100; $i++) {
+    $remaining_allotment = (float) 100.0000 - $used;
+    $remaining_steps = 100 - $i;
+    $multiplier = round($remaining_allotment / $remaining_steps  * 1.5, 4);
+    $used += $multiplier;
+    if (($i >= $serp) || ($used > 100)) {
+      return round($multiplier * $all_traffic / 100);
+    }
+  }
+}
+
+

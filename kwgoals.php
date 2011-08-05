@@ -9,7 +9,7 @@
   $_MAX_INTERVAL = strtotime('-3 minute'); // reject duplicate requests within 3 minutes
   
   if (!_kwgoals_validate()) exit;  
-  include_once('kwgoals.admin.inc.php');
+  include_once('kwgoals.admin.inc');
   if (!_kwgoals_drupal_bootstrap_db()) exit;
    
  
@@ -65,11 +65,12 @@
 
 
 function _kwgoals_drupal_bootstrap_db() {
-  if (!$depth = count(explode('/', substr(getcwd(), strpos(getcwd(), '/sites/', 0)+1)))) return FALSE; 
-  for ($i==1; $i<$depth; $i++) chdir('../'); // move to drupal folder  
-  require_once './includes/bootstrap.inc'; 
-  require_once './includes/common.inc';
-  drupal_bootstrap(DRUPAL_BOOTSTRAP_DATABASE);  
+  if (!$depth = count(explode('/', substr(getcwd(), strpos(getcwd(), '/sites/', 0)+1)))) return FALSE;  
+  chdir(str_repeat('../', $depth)); 
+  define('DRUPAL_ROOT', getcwd());
+  require_once DRUPAL_ROOT . '/includes/bootstrap.inc'; 
+  require_once DRUPAL_ROOT . '/includes/common.inc';
+  drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);  // DRUPAL_BOOTSTRAP_PATH ?
   return TRUE;
 } 
 

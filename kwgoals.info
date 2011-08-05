@@ -1,4 +1,10 @@
 name = Keyword Goals
 description = Organize site promotion around keyword goals
-package = * KOC
-core = 6.x
+core = 7.x
+package = "* Link Collaboration Tools" 
+php = 5.3
+configure = admin/config/koc/keyword-goals
+dependencies[] = chart 
+
+files[] = csv_reader.class.php
+files[] = kwgoals.admin.inc 
