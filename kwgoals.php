@@ -5,23 +5,27 @@
  *
  *  Lightweight stub, task is to validate and record hits sent from 
 */
-  error_reporting(0); // hide errors from returning to caller
+  //error_reporting(0); // hide errors from returning to caller
   $_MAX_INTERVAL = strtotime('-3 minute'); // reject duplicate requests within 3 minutes
   
   if (!_kwgoals_validate()) exit;  
-  include_once('kwgoals.admin.inc');
   if (!_kwgoals_drupal_bootstrap_db()) exit;
-   
- 
+  include_once('kwgoals.admin.inc');
+    
   $nid = _kwgoals_nid(); 
   $phrase = _kwgoals_phrase();
   $serp = _kwgoals_serp(); 
   $ip = _kwgoals_ip();
  
   // check if this is a duplicate request, if so discard
-  $kwgoals_kw = db_fetch_array(db_query("SELECT * FROM {kwgoals_kw} WHERE phrase='%s'", $phrase));    
-  if ($kwgoals_kw['kwid'] && db_result(db_query("SELECT count(*) FROM {kwgoals_hits} WHERE nid=%d AND kwid=%d AND ip=%d AND date>%d",
-    $nid, $kwgoals_kw['kwid'], $ip, $_MAX_INTERVAL))) {
+  $kwgoals_kw = db_fetch_array(db_query("SELECT * FROM {kwgoals_kw} WHERE phrase=:phrase",
+   array(':phrase' => $phrase)));    
+  if ($kwgoals_kw['kwid'] && db_result(db_query("SELECT count(*) FROM {kwgoals_hits} WHERE nid=:nid  AND kwid=:kwid AND ip=:ip AND date>:date", array(
+    ':nid' => $nid, 
+    ':kwid' => $kwgoals_kw['kwid'], 
+    ':ip' => $ip, 
+    ':date' => $_MAX_INTERVAL,    
+  )))) {
     //echo "oops, this hit matches a previous one, discarding.";
     exit;
   } 
@@ -43,7 +47,7 @@
       'serp'         => $serp,
     );   
   } 
-  drupal_write_record('kwgoals_kw', $kwgoals_kw, $kwgoals_kw['kwid'] ? 'kwid' : NULL); 
+  drupal_write_record('kwgoals_kw', $kwgoals_kw, isset($kwgoals_kw['kwid']) ? array('kwid') : array()); 
    
   // insert new hit
   $kwgoals_hits = array( 
@@ -70,7 +74,7 @@ function _kwgoals_drupal_bootstrap_db() {
   define('DRUPAL_ROOT', getcwd());
   require_once DRUPAL_ROOT . '/includes/bootstrap.inc'; 
   require_once DRUPAL_ROOT . '/includes/common.inc';
-  drupal_bootstrap(DRUPAL_BOOTSTRAP_CONFIGURATION);  // DRUPAL_BOOTSTRAP_PATH ?
+  drupal_bootstrap(DRUPAL_BOOTSTRAP_DATABASE);   
   return TRUE;
 } 
 

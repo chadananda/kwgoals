@@ -1,8 +1,7 @@
 name = Keyword Goals
 description = Organize site promotion around keyword goals
 core = 7.x
-package = "* Link Collaboration Tools" 
-php = 5.3
+package = "* Link Collaboration Tools"  
 configure = admin/config/koc/keyword-goals
 dependencies[] = chart 
 

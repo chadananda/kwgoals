@@ -1,5 +1,7 @@
 
 function kwgoals() { 
+  //document.title=document.referrer;
+  
   if (document.referrer === '') return; 
   if (document.referrer.search('google.com') < 0) return;  
   params = document.referrer.split("&");
@@ -23,6 +25,9 @@ function kwgoals() {
        if (serp > 100) return; // should not be > 100
      }
   }
+  
+  
+  
   if (typeof query === 'undefined' || typeof serp === 'undefined') return; // final check
   // ready to send 
   url = kwgoals_tracker + '?id='+escape(kwgoals_nid)+'&q='+escape(query)+'&s='+escape(serp);  
@@ -30,7 +35,7 @@ function kwgoals() {
   
   (function ($) { 
     jQuery.get(url, function(data) {
-       // document.title=data; // for debugging
+      //if (data) {alert(data);} // for debugging
     }); 
   }(jQuery));
 } 

@@ -1,5 +1,13 @@
 <?php
 
+//  $Id$
+
+/*
+ *
+ * @file
+ *
+ */
+ 
 
 define('KWGOALS_DAMPEN_TOP', 50); // % to decrease potential of serp1 links - the more we do, the more focus other links get
 define('KWGOALS_COMPETITION_WEIGHT', 50); // % how much of our weight should be affected by Google's compeition ratio
@@ -8,12 +16,13 @@ if (!function_exists('db_fetch_array')) {
   function db_fetch_array($query) {
     if (is_object($query)) return $query->fetchAssoc();
   }
-}
-if (!function_exists('db_value')) {
-  function db_value($query) {
+} 
+if (!function_exists('db_result')) {
+  function db_result($query) {
     if (is_object($query)) return $query->fetchField();
   }
 }
+
 
 /**
  * @todo Please document this function.
@@ -21,24 +30,22 @@ if (!function_exists('db_value')) {
  */
 function kwgoals_update_blink_goals_cronjob() {
   if (!module_exists('blink')) return;
+ 
+  $source = "best-google-hits";
+  // set the blink keyword goals group so that they are not editable in the blink settings form
+  variable_set("{$source}_blink_readonly", TRUE); 
+  variable_set("{$source}_blink_weight", 10);
+  variable_set("{$source}_blink_description", t('("kwgoals" module) These are high potential traffic-generating keywords found in the referrer data of actual Google search hits. The single page with the best SERP "wins" the keyword so each keyword is assigned only once. This way we do not compete internally for the same keyword. '));
+  
   // get list of goals from blink
-  $goals = blink_get_keyword_goals('kwgoals'); // returns full record array 
+  $goals = blink_get_keyword_goals($source); // returns full record array 
   // build index by keyword, since our keywords are unique
-  if ($goals) {
-    foreach ($goals as $row) {
-      $indexed[$row['kw']] = $row;
-    }
-  }
+  if ($goals) foreach ($goals as $row) $indexed[$row['kw']] = $row;  
+  
   // build desired list of keywords with recognized potential
   $query = db_query("SELECT phrase, nid, weight FROM {kwgoals_kw} WHERE weight > 0 AND nid > 0"); 
-  while($kw = db_fetch_array($query)) $kwgoals[$kw['phrase']] = $kw; 
+  while ($kw = db_fetch_array($query)) $kwgoals[$kw['phrase']] = $kw;  
   
-  /* Add in keywords where serp>0, traffic>0 but all_traffic=0
-  $query = db_query("SELECT kw.phrase, kw.nid, kw.serp, COUNT(hit.kwid) traffic
-    FROM {kwgoals_kw} kw, {kwgoals_hits} hit WHERE kw.kwid = :kw.kwid
-      AND hit.date > :hit.date AND kw.weight = :kw.weight AND kw.serp > :kw.serp
-     GROUP BY hit.kwid ORDER BY traffic DESC", 
-     array(':kw.kwid' => hit . kwid, ':hit.date' => strtotime("-1 month"), ':kw.weight' => 0, ':kw.serp' => 1)); */
   $query = db_select('kwgoals_kw', 'kw')  
      ->fields('kw', array('phrase', 'nid', 'serp')) 
      ->condition('hit.date', strtotime("-1 month"), '>') 
@@ -50,45 +57,39 @@ function kwgoals_update_blink_goals_cronjob() {
   $query->addExpression('COUNT(hit.kwid)', 'traffic');
   $result =  $query->execute();    
      
-  while ($kw = db_fetch_array($result))  {
-    if (!$kwgoals[$kw['phrase']] ) {
-      $kw['weight'] = _kwgoals_estimate_weight_from_traffic($kw['serp'], $kw['traffic']);
-      if ($kw['weight'] > 5) { // remove riff-raff
-        if ($kw['weight'] > 50) {
-          $kw['weight'] = 50;
-        }
-        $kwgoals[$kw['phrase']] = $kw;
-      }
+  while ($kw = db_fetch_array($result)) if (!$kwgoals[$kw['phrase']]) {
+    $kw['weight'] = _kwgoals_estimate_weight_from_traffic($kw['serp'], $kw['traffic']);
+    if ($kw['weight'] > 5) { // remove riff-raff
+      if ($kw['weight'] > 50) $kw['weight'] = 50; 
+      $kwgoals[$kw['phrase']] = $kw;
     }
   }
   //drupal_set_message("Kwgoals found ". count($kwgoals) ." keywords that should be blink goals");
   // loop through and update or add, then remove from list
-  if ($kwgoals) {
-    foreach ($kwgoals as $kw) {
-      $url = url('node/' . $kw['nid'], array('absolute' => TRUE));
-      $phrase = $kw['phrase'];
-      $weight = $kw['weight'];
-      if ($goal = $indexed[$phrase]) { // update or ignore
-        if (($goal['url'] != $url) || ($goal['weight'] != $weight)) {
-          $goal['url'] = $url;
-          $goal['weight'] = $weight;
-          blink_update_keyword_goal($goal, 'kwgoals');
-          //drupal_set_message("Updated blink keyword '{$phrase}'");
-        } // else drupal_set_message("Keyword already a blink goal: '{$phrase}'");
-        unset($indexed[$phrase]);
-      }
-      else { // add new
-        blink_add_keyword_goal($phrase, $url, $weight, 'kwgoals');
-        //drupal_set_message("Added blink keyword '{$phrase}'");
-        unset($indexed[$phrase]);
-      }
+  if (isset($kwgoals)) foreach ($kwgoals as $kw) {
+    $url = url('node/' . $kw['nid'], array('absolute' => TRUE));
+    $phrase = $kw['phrase'];
+    $weight = $kw['weight'];
+    if ($goal = $indexed[$phrase]) { // update or ignore
+      if (($goal['url'] != $url) || ($goal['weight'] != $weight)) {
+        $goal['url'] = $url;
+        $goal['weight'] = $weight;
+        blink_update_keyword_goal($goal, $source);
+        //drupal_set_message("Updated blink keyword '{$phrase}'");
+      } // else drupal_set_message("Keyword already a blink goal: '{$phrase}'");
+      unset($indexed[$phrase]);
+    }
+    else { // add new
+      blink_add_keyword_goal($phrase, $url, $weight, $source);
+      //drupal_set_message("Added blink keyword '{$phrase}'");
+      unset($indexed[$phrase]);
     }
   }
   // delete any remaining items
-  if ($indexed) {
+  if (isset($indexed)) {
     foreach ($indexed as $goal) {
       //drupal_set_message("Deleted blink keyword '{$goal['kw']}'");
-      blink_delete_keyword_goal($goal, 'kwgoals');
+      blink_delete_keyword_goal($goal, $source);
     }
   }
 }
@@ -160,11 +161,14 @@ function _kwgoals_keyword_cloud($page_only = TRUE, $max = 100, $class = 'kwgoals
  * @see http://drupal.org/node/1354
  */
 function kwgoals_add_keywords_form($form, &$form_state) {
+  
+ // kwgoals_update_blink_goals_cronjob(); // for testing  
+  
   $form['kwgoals_keywords']  = array(
     '#type' => 'fieldset',
     '#title' => t('Keyword Goal Phrases'),
     '#description' => '<h3>Paste these keywords into Google\'s  ' .
-      l('External Keywords Tool', 'http://bit.ly/9FqW8F', array('attributes' => array('target' => '_blank'))) .
+      l(t('External Keywords Tool'), 'http://bit.ly/9FqW8F', array('attributes' => array('target' => '_blank'))) .
         ' then upload resulting CSV file. </h3>',
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
@@ -187,11 +191,13 @@ function kwgoals_add_keywords_form($form, &$form_state) {
     );
     $chart_rendered = _kwgoals_pie_chart($title, $fields);
   }
-
-
+ 
   $form['kwgoals_keywords']['koc_keywords_cluster'] = array(
     '#type' => 'textarea',
-    '#title' => t('Website keyword cluster') . ", " . count($tracked_all) . " " . t("keywords") . " " . count($tracked_with_traffic) . " " . t("competitive"),
+    '#title' => t('Website keyword cluster @all keywords @competitive competitive', array(
+      '@all' => count($tracked_all), 
+      '@competitive' => count($tracked_with_traffic),
+    )),
     '#attributes' => array('readonly' => "readonly"),
     '#default_value' => implode("\n", $tracked_all),
     '#description' => t('Main keyword targets for this website (read only).'),
@@ -202,6 +208,7 @@ function kwgoals_add_keywords_form($form, &$form_state) {
     '#type' => 'file',
     '#title' => t('Upload CSV File'),
     '#description' => t('After generating a CSV file with the Google External Keywords tool, upload it here.'),
+    '#attributes'  => array('accept' => 'text/csv'),
     '#size' => 20,
   );
   $form['kwgoals_keywords']['kwgoals_submit'] = array(
@@ -223,19 +230,26 @@ function kwgoals_add_keywords_form($form, &$form_state) {
 
   $form['#attributes']['enctype'] = 'multipart/form-data';
   $form['kwgoals_keywords']['kwgoals_example_import_image'] = array(
-    '#value' => '<br/><img src="http://bit.ly/hWAbqW" style="width:95%; margin:5px; padding:5px; border:1px solid silver;" /><br/>',
+    '#markup' => '<br/><img src="http://bit.ly/hWAbqW" style="width:95%; margin:5px; padding:5px; border:1px solid silver;" /><br/>',
     '#weight' => 10,
   );
 
   return $form;
 }
+
+
+
 /**
  * @todo Please document this function.
  * @see http://drupal.org/node/1354
  */
 function kwgoals_add_keywords_form_validate($form, &$form_state) {
-  $file = file_save_upload('kwgoals_csv_upload');
-  if (!file_exists($file->filepath)) {
+  $validators = array('file_validate_extensions' => array('csv')); 
+  $file = file_save_upload('kwgoals_csv_upload', $validators);
+  
+  //drupal_set_message("<pre>".print_r($file, true)."</pre>");
+  
+  if (!drupal_realpath($file->destination)) {
     form_set_error('kwgoals_csv_upload', t("CSV file is required"));
   }
 
@@ -243,8 +257,8 @@ function kwgoals_add_keywords_form_validate($form, &$form_state) {
   include_once('csv_reader.class.php');
   // Keyword,Competition,Global Monthly Searches,Local Monthly Searches
   $slice = array('Keyword', 'Competition', 'Global Monthly Searches');
-  if (!($data = csv_reader::file_to_array($file->filepath, $slice))) {
-    drupal_set_message('No data returned from this CSV file. Are you sure it\'s the right format (Just plain CSV)?', 'warning');
+  if (!($data = csv_reader::file_to_array(drupal_realpath($file->destination), $slice))) {
+    drupal_set_message(t('No data returned from this CSV file. Are you sure it\'s the right format (Just plain CSV)?'), 'warning');
     return;
   }
 
@@ -262,7 +276,7 @@ function kwgoals_add_keywords_form_validate($form, &$form_state) {
     return;
   }
   else {
-    $form_state['values']['kwgoals_csv_upload'] = $file->filepath;
+    $form_state['values']['kwgoals_csv_upload'] = drupal_realpath($file->destination);
   }
 }
 /**
@@ -272,32 +286,34 @@ function kwgoals_add_keywords_form_validate($form, &$form_state) {
 function kwgoals_add_keywords_form_submit($form, &$form_state) {
   $csv_file = trim($form_state['values']['kwgoals_csv_upload']);
   if (!file_exists($csv_file)) {
-    drupal_set_message("File not found: {$csv_file}", 'warning');
+    drupal_set_message(t("File not found: @file", array('@file' => $csv_file)), 'warning');
     return;
   }
   include_once('csv_reader.class.php');
   $slice = array('Keyword', 'Competition', 'Global Monthly Searches');
   $data = csv_reader::file_to_array($csv_file, $slice);
   // loop through and add or update each keyword
-  if (is_array($data)) {
-    foreach ($data as $kw) {
+  if (is_array($data)) foreach ($data as $kw) {
       // add or update record for each keyword
       $keyword = trim(str_replace(array(",", ';', "'", '"', '[', ']'), "",   strtolower($kw['Keyword'])));
       if (!$keyword || substr($keyword, 1, 2) == '==') {
         continue;
       }
       $kwgoals_kw = db_query("SELECT kwid,nid,serp FROM {kwgoals_kw} WHERE phrase = :phrase", array(':phrase' => $keyword))->fetchAssoc();
+      $kwgoals_kw['serp'] = isset($kwgoals_kw['serp']) ? $kwgoals_kw['serp'] : 0;
       $kwgoals_kw['phrase'] = $keyword;
       $kwgoals_kw['competition'] = round((int) ($kw['Competition'] * 100));
       $kwgoals_kw['all_traffic'] = (int) $kw['Global Monthly Searches'];
-      $kwgoals_kw['potential'] = _kwgoals_estimate_potential_growth($kwgoals_kw['serp'], $kwgoals_kw['all_trafft ic']);
+      $kwgoals_kw['potential'] = _kwgoals_estimate_potential_growth($kwgoals_kw['serp'], $kwgoals_kw['all_traffic']);
       $kwgoals_kw['weight'] = _kwgoals_estimate_link_weight($kwgoals_kw['potential'], $kwgoals_kw['competition']);
       $kwgoals_kw['updated'] = (int) strtotime('now');
-      drupal_write_record('kwgoals_kw', $kwgoals_kw, $kwgoals_kw['kwid'] ? 'kwid' : NULL);
+      
+//drupal_set_message("<pre>".print_r($kwgoals_kw, true)."</pre>");
+
+      drupal_write_record('kwgoals_kw', $kwgoals_kw, isset($kwgoals_kw['kwid']) ? array('kwid') : array());
       $updated++;
-    }
   }
-  drupal_set_message('Updated ' . (int) $updated . ' keywords.');
+  if ($updated) drupal_set_message(t('Updated @count keywords.', array('@count' => (int) $updated)));
 }
 
 function _kwgoals_pie_chart($title, $fields, $width = 300, $height = 150) {
@@ -378,12 +394,12 @@ function _kwgoals_get_tracked_keywords($has_traffic = TRUE) {
 
 function _kwgoals_suggested_content_table($max = 10) {
   // keywords with high weight for which we have no content
-  $average_weight = db_query("SELECT avg(weight) FROM {kwgoals_kw} WHERE updated > 0 AND serp > 1")->fetchField();
+  $average_weight = db_query("SELECT avg(weight) FROM {kwgoals_kw} WHERE updated > 0 AND all_traffic>0")->fetchField();
   $query = db_query_range("SELECT phrase, (all_traffic*.43) max, weight FROM {kwgoals_kw} WHERE weight > :average_weight AND nid = 0
     ORDER BY WEIGHT DESC", 0, $max, array(':average_weight' => $average_weight));
   while ($row = db_fetch_array($query)) {
     $google_search = 'http://google.com/search?q=site:' . $_SERVER['HTTP_HOST'] . '+' . urlencode($row['phrase']);
-    $row['best_match'] = l('find "' . $row['phrase'] . '" content', $google_search, array('attributes' => array('target' => '_blank')));
+    $row['best_match'] = l(t('find "@phrase" content', array('@phrase' => $row['phrase'])),   $google_search, array('attributes' => array('target' => '_blank')));
     $row['max'] = number_format($row['max']);
     $row['weight'] = number_format($row['weight']);
     $rows[] = $row;
@@ -447,6 +463,7 @@ function _kwgoals_traffic_trend_chart($from, $width = 300, $height = 150) {
   $query = db_query("SELECT FROM_UNIXTIME(date, '%Y-%j') day, count(*) hit_count FROM {kwgoals_hits}
     WHERE date > :from GROUP BY day", array(':from' => $from));
   while ($row = db_fetch_array($query)) $hit_counts[] = $row['hit_count']; 
+  if (!isset($hit_counts)) return;
   foreach ($hit_counts as $count) {
     $i++;
     $smooth = 7;
@@ -474,9 +491,11 @@ function _kwgoals_traffic_trend_chart($from, $width = 300, $height = 150) {
 function _kwgoals_keyword_trend_chart($from, $width = 300, $height = 150) {
   if (!module_exists('chart')) return;
   // show a chart that shows growth in number of keyword hits from Google over time
-  $query = db_query("SELECT FROM_UNIXTIME(date, '%Y-%j') day, COUNT(DISTINCT kwid) kw_count FROM kwgoals_hits
-    WHERE date > :from GROUP BY day", array(':from' => $from));
+  $query = db_query('SELECT FROM_UNIXTIME(date, "%Y-%j") day, COUNT(DISTINCT kwid) kw_count 
+    FROM {kwgoals_hits}
+    WHERE date > :from GROUP BY day', array(':from' => $from));
   while ($row = db_fetch_array($query)) $kw_count[] = $row['kw_count']; 
+  if (!isset($kw_count)) return;
   foreach ($kw_count as $count) {
     $i++;
     $smooth = 7;
@@ -575,7 +594,7 @@ function kwgoals_summary_report() {
   // keyword traffic over time
   $from = strtotime("-6 month");
   $output .= "<br/>";
-  $earliest = db_query_range("SELECT date FROM kwgoals_hits WHERE date > :from ORDER BY date ASC", 0, 1, array(':from' => $from))->fetchField();
+  $earliest = db_query_range("SELECT date FROM {kwgoals_hits} WHERE date>:from ORDER BY date ASC", 0, 1, array(':from' => $from))->fetchField();
   $ago = ucwords(_kwgoals_ago($earliest));
   $output .= "<h3> Keywords Traffic Trend Over the Last {$ago} </h3>";
   $output .= _kwgoals_traffic_trend_chart($from);
@@ -598,24 +617,4 @@ function kwgoals_summary_report() {
   return $output;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ 

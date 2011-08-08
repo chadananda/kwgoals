@@ -16,10 +16,7 @@
  */
 function kwgoals_install() { // Create my tables.
   // TODO The drupal_(un)install_schema functions are called automatically in D7.
-  // drupal_install_schema('kwgoals')
-  
-  // set the blink keyword goals group so that they are not editable in the blink settings form
-  variable_set('kwgoals_blink_readonly', TRUE);
+  // drupal_install_schema('kwgoals') 
 }
 
 /**
