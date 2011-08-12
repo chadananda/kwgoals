@@ -447,6 +447,7 @@ function _kwgoals_first_page_cloud($min = 1, $max = 9, $has_traffic = TRUE) {
       array(':min' => $min, ':max' => $max));
     while ($r = db_fetch_array($query)) $rows[] = $r; 
   } 
+  if (!isset($rows)) return;
   foreach ($rows as $r) {
     $weight = $r['weight'];
     $phrase = $r['phrase'];
@@ -491,9 +492,8 @@ function _kwgoals_traffic_trend_chart($from, $width = 300, $height = 150) {
 function _kwgoals_keyword_trend_chart($from, $width = 300, $height = 150) {
   if (!module_exists('chart')) return;
   // show a chart that shows growth in number of keyword hits from Google over time
-  $query = db_query('SELECT FROM_UNIXTIME(date, "%Y-%j") day, COUNT(DISTINCT kwid) kw_count 
-    FROM {kwgoals_hits}
-    WHERE date > :from GROUP BY day', array(':from' => $from));
+  $query = db_query('SELECT FROM_UNIXTIME(date, \'%Y-%j\') day, COUNT(DISTINCT kwid) kw_count 
+    FROM {kwgoals_hits} WHERE date > :from GROUP BY day', array(':from' => $from));
   while ($row = db_fetch_array($query)) $kw_count[] = $row['kw_count']; 
   if (!isset($kw_count)) return;
   foreach ($kw_count as $count) {
@@ -603,16 +603,19 @@ function kwgoals_summary_report() {
 
   // keywords in #1 and #2 position
   $output .= "<br/><br/>";
-  $output .= "<h3> Extremely Competitive Keywords with Page 1 Google Hits</h3>";
-  $output .= _kwgoals_first_page_cloud(1, 10);
+  if ($first_page_cloud = _kwgoals_first_page_cloud(1, 10)) {
+    $output .= "<h3>" . t('Extremely Competitive Keywords with Page 1 Google SERP') . "</h3>" . $first_page_cloud; 
+  }
   // keywords in #1 and #2 position
-  $output .= "<h4> Page 2+ </h4>";
-  $output .= _kwgoals_first_page_cloud(10, 100);
+  if ($second_page_cloud = _kwgoals_first_page_cloud(10, 100)) {
+    $output .= "<h4>" . t('Page 2+') . "</h4>" . $second_page_cloud;
+  }
 
   // keywords in #1 and #2 position
-  $output .= "<br/><br/>";
-  $output .= "<h3> Other Related Keywords with Page 1 Google Hits</h3>";
-  $output .= _kwgoals_first_page_cloud(1, 10, FALSE);
+  if ($other_top_keywords = _kwgoals_first_page_cloud(1, 10, FALSE)) {
+    $output .= "<br/><br/>";
+    $output .= "<h3>" . t('Longtail Keywords with Page 1 Google SERP') . "</h3>" . $other_top_keywords;
+  }
 
   return $output;
 }
