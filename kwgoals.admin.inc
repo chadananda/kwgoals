@@ -57,7 +57,7 @@ function kwgoals_update_blink_goals_cronjob() {
   $query->addExpression('COUNT(hit.kwid)', 'traffic');
   $result =  $query->execute();    
      
-  while ($kw = db_fetch_array($result)) if (!$kwgoals[$kw['phrase']]) {
+  while ($kw = db_fetch_array($result)) if (!isset($kwgoals[$kw['phrase']])) {
     $kw['weight'] = _kwgoals_estimate_weight_from_traffic($kw['serp'], $kw['traffic']);
     if ($kw['weight'] > 5) { // remove riff-raff
       if ($kw['weight'] > 50) $kw['weight'] = 50; 
